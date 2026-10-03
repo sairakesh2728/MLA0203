@@ -1,0 +1,42 @@
+def find_s_algorithm(training_data):
+    
+    # Initialize hypothesis with the first positive example
+    hypothesis = None
+    for sample, label in training_data:
+        if label.lower() == 'yes':
+            hypothesis = list(sample)
+            break
+            
+    if hypothesis is None:
+        raise ValueError("Training data must contain at least one positive ('Yes') example.")
+
+    # Iterate through the rest of the training samples
+    for sample, label in training_data:
+        if label.lower() == 'yes':
+            for i in range(len(hypothesis)):
+                # If attribute value doesn't match, generalize it to '?'
+                if hypothesis[i] != sample[i]:
+                    hypothesis[i] = '?'
+                    
+    return hypothesis
+
+
+# Example Demonstration
+if __name__ == "__main__":
+    # Dataset representing "EnjoySport" concept
+    # Attributes: [Sky, AirTemp, Humidity, Wind, Water, Forecast]
+    training_examples = [
+        (["Sunny", "Warm", "Normal", "Strong", "Warm", "Same"], "Yes"),
+        (["Sunny", "Warm", "High", "Strong", "Warm", "Same"], "Yes"),
+        (["Rainy", "Cold", "High", "Strong", "Warm", "Change"], "No"),
+        (["Sunny", "Warm", "High", "Strong", "Cool", "Change"], "Yes")
+    ]
+
+    print("Training Data Samples:")
+    for idx, (sample, label) in enumerate(training_examples, 1):
+        print(f"Sample {idx}: {sample} -> Label: {label}")
+
+    most_specific_hypothesis = find_s_algorithm(training_examples)
+    
+    print("\nMost Specific Hypothesis found by FIND-S:")
+    print(most_specific_hypothesis)
