@@ -1,0 +1,150 @@
+import csv
+def is_more_general(h1, h2):
+    """Checks if hypothesis h1 is more general than or equal to h2."""
+    for x, y in zip(h1, h2):
+        if x != '?':
+            if y != '?' and x != y:
+                return False
+    return True
+
+def fulfills_hypothesis(hypothesis, sample):
+    """Checks if a sample satisfies a given hypothesis."""
+    for h_val, s_val in zip(hypothesis, sample):
+        if h_val != '?' and h_val != s_val:
+            return False
+    return True
+
+def candidate_elimination(filename):
+    """
+    Implements the Candidate-Elimination algorithm using data from a CSV file.
+    
+    The CSV file is expected to have feature columns followed by a target label column 
+    ('Yes' or 'No').
+    """
+    concepts = []
+    target = []
+    
+    # Read the dataset from the CSV file
+    with open(filename, 'r') as csvfile:
+        reader = csv.reader(csvfile)
+        headers = next(reader) # Read header row if present
+        for row in reader:
+            if row:
+                concepts.append(row[:-1])
+                target.append(row[-1].strip())
+
+    num_attributes = len(concepts[0])
+    
+    # Initialize Specific Boundary (S0) with the most specific hypothesis
+    S = [['0'] * num_attributes]
+    
+    # Initialize General Boundary (G0) with the most general hypothesis
+    G = [['?'] * num_attributes]
+    
+    print(f"Initial S0: {S}")
+    print(f"Initial G0: {G}\n")
+
+    for i, (sample, label) in enumerate(zip(concepts, target)):
+        print(f"--- Instance {i+1}: {sample} | Label: {label} ---")
+        
+        if label.lower() == 'yes':
+            # Positive training example
+            # 1. Remove from G any hypothesis inconsistent with the example
+            G = [g for g in G if fulfills_hypothesis(g, sample)]
+            
+            # 2. Generalize S if needed
+            new_S = []
+            for s in S:
+                if fulfills_hypothesis(s, sample):
+                    new_S.append(s)
+                else:
+                    # Create a generalized version of s to match sample
+                    s_new = list(s)
+                    for j in range(num_attributes):
+                        if s_new[j] != sample[j]:
+                            s_new[j] = '?' if s_new[j] == '0' else s_new[j] # handle initialization boundary if needed
+                            # More precisely, standard candidate elimination update:
+                            if s_new[j] == '0':
+                                s_new[j] = sample[j]
+                            elif s_new[j] != sample[j]:
+                                s_new[j] = '?'
+                    # Ensure s_new is consistent with all positive examples seen so far (or simplified check)
+                    new_S.append(s_new)
+            
+            # Refine S by removing overly general hypotheses that are more general than other hypotheses in S
+            S = []
+            for s in new_S:
+                if not any(is_more_general(other_s, s) and other_s != s for other_s in new_S):
+                    S.append(s)
+                    
+            # Also filter S to ensure no hypothesis in S is more general than any hypothesis in G (sanity check)
+            # (Standard implementation updates G and S directly)
+            
+        else:
+            # Negative training example
+            # 1. Remove from S any hypothesis that incorrectly classifies the negative example
+            S = [s for s in S if not fulfills_hypothesis(s, sample)]
+            
+            # 2. Specialize G to exclude the negative example
+            new_G = []
+            for g in G:
+                if fulfills_hypothesis(g, sample):
+                    # Specialize g for each attribute where g is '?' and sample has a specific value
+                    for j in range(num_attributes):
+                        if g[j] == '?':
+                            # Find all possible training attribute values or use the specific negative attribute value
+                            # Standard specialization: replace '?' with all possible values except sample[j]
+                            # Assuming categorical attributes, we can extract unique values from dataset for column j
+                            unique_vals = list(set(c[j] for c in concepts))
+                            for val in unique_vals:
+                                if val != sample[j]:
+                                    g_new = list(g)
+                                    g_new[j] = val
+                                    # Add g_new if it is more general than at least one hypothesis in S
+                                    if any(is_more_general(g_new, s) for s in S):
+                                        new_G.append(g_new)
+                else:
+                    new_G.append(g)
+            
+            # Refine G by removing redundant hypotheses (those more specific than other hypotheses in G)
+            G = []
+            for g in new_G:
+                if not any(is_more_general(g, other_g) and g != other_g for other_g in new_G):
+                    G.append(g)
+
+        print(f"Updated S: {S}")
+        print(f"Updated G: {G}\n")
+
+    return S, G
+
+# Example Demonstration
+if __name__ == "__main__":
+    import os
+    
+    # Create a sample CSV file for demonstration purposes
+    csv_filename = "enjoysport.csv"
+    csv_data = [
+        ["Sky", "AirTemp", "Humidity", "Wind", "Water", "Forecast", "EnjoySport"],
+        ["Sunny", "Warm", "Normal", "Strong", "Warm", "Same", "Yes"],
+        ["Sunny", "Warm", "High", "Strong", "Warm", "Same", "Yes"],
+        ["Rainy", "Cold", "High", "Strong", "Warm", "Change", "No"],
+        ["Sunny", "Warm", "High", "Strong", "Cool", "Change", "Yes"]
+    ]
+    
+    with open(csv_filename, mode='w', newline='') as f:
+        writer = csv.writer(f)
+        writer.writerows(csv_data)
+        
+    print(f"Created sample CSV file '{csv_filename}' successfully.\n")
+    
+    # Run the Candidate-Elimination algorithm
+    final_S, final_G = candidate_elimination(csv_filename)
+    
+    print("Final Specific Boundary (S):")
+    print(final_S)
+    print("\nFinal General Boundary (G):")
+    print(final_G)
+    
+    # Clean up test file
+    if os.path.exists(csv_filename):
+        os.remove(csv_filename)
