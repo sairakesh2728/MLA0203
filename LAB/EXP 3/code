@@ -1,0 +1,105 @@
+import math
+from collections import Counter
+
+# 1. Dataset definition
+dataset = [
+    {'Outlook': 'Sunny',    'Temperature': 'Hot',  'Humidity': 'High',   'Wind': 'Weak',   'Play': 'No'},
+    {'Outlook': 'Sunny',    'Temperature': 'Hot',  'Humidity': 'High',   'Wind': 'Strong', 'Play': 'No'},
+    {'Outlook': 'Overcast', 'Temperature': 'Hot',  'Humidity': 'High',   'Wind': 'Weak',   'Play': 'Yes'},
+    {'Outlook': 'Rain',     'Temperature': 'Mild', 'Humidity': 'High',   'Wind': 'Weak',   'Play': 'Yes'},
+    {'Outlook': 'Rain',     'Temperature': 'Cool', 'Humidity': 'Normal', 'Wind': 'Weak',   'Play': 'Yes'},
+    {'Outlook': 'Rain',     'Temperature': 'Cool', 'Humidity': 'Normal', 'Wind': 'Strong', 'Play': 'No'},
+    {'Outlook': 'Overcast', 'Temperature': 'Cool', 'Humidity': 'Normal', 'Wind': 'Strong', 'Play': 'Yes'},
+    {'Outlook': 'Sunny',    'Temperature': 'Mild', 'Humidity': 'High',   'Wind': 'Weak',   'Play': 'No'},
+    {'Outlook': 'Sunny',    'Temperature': 'Cool', 'Humidity': 'Normal', 'Wind': 'Weak',   'Play': 'Yes'},
+    {'Outlook': 'Rain',     'Temperature': 'Mild', 'Humidity': 'Normal', 'Wind': 'Weak',   'Play': 'Yes'},
+    {'Outlook': 'Sunny',    'Temperature': 'Mild', 'Humidity': 'Normal', 'Wind': 'Strong', 'Play': 'Yes'},
+    {'Outlook': 'Overcast', 'Temperature': 'Mild', 'Humidity': 'High',   'Wind': 'Strong', 'Play': 'Yes'},
+    {'Outlook': 'Overcast', 'Temperature': 'Hot',  'Humidity': 'Normal', 'Wind': 'Weak',   'Play': 'Yes'},
+    {'Outlook': 'Rain',     'Temperature': 'Mild', 'Humidity': 'High',   'Wind': 'Strong', 'Play': 'No'}
+]
+
+target_attribute = 'Play'
+features = ['Outlook', 'Temperature', 'Humidity', 'Wind']
+
+# 2. Helper functions for Entropy and Information Gain
+def calculate_entropy(data, target_attr):
+    total = len(data)
+    if total == 0:
+        return 0
+    counts = Counter(row[target_attr] for row in data)
+    entropy = 0.0
+    for count in counts.values():
+        prob = count / total
+        entropy -= prob * math.log2(prob)
+    return entropy
+
+def calculate_information_gain(data, feature, target_attr):
+    total = len(data)
+    base_entropy = calculate_entropy(data, target_attr)
+    
+    # Split data by feature values
+    values = set(row[feature] for row in data)
+    subset_entropy = 0.0
+    
+    for val in values:
+        subset = [row for row in data if row[feature] == val]
+        prob = len(subset) / total
+        subset_entropy += prob * calculate_entropy(subset, target_attr)
+        
+    return base_entropy - subset_entropy
+
+# 3. ID3 Recursive Tree Construction
+def id3(data, features, target_attr):
+    targets = [row[target_attr] for row in data]
+    
+    # Base Case 1: All instances have the same target value
+    if targets.count(targets[0]) == len(targets):
+        return targets[0]
+    
+    # Base Case 2: No remaining features to split on
+    if not features:
+        return Counter(targets).most_common(1)[0][0]
+    
+    # Find best feature to split on
+    gains = {feat: calculate_information_gain(data, feat, target_attr) for feat in features}
+    best_feature = max(gains, key=gains.get)
+    
+    tree = {best_feature: {}}
+    remaining_features = [f for f in features if f != best_feature]
+    
+    # Recursively build branches
+    feature_values = set(row[best_feature] for row in data)
+    for val in feature_values:
+        subset = [row for row in data if row[best_feature] == val]
+        tree[best_feature][val] = id3(subset, remaining_features, target_attr)
+        
+    return tree
+
+# 4. Classification function for a new sample
+def classify(tree, sample):
+    if not isinstance(tree, dict):
+        return tree
+    
+    root_node = next(iter(tree))
+    sample_val = sample.get(root_node)
+    
+    if sample_val in tree[root_node]:
+        return classify(tree[root_node][sample_val], sample)
+    else:
+        return "Unknown Value"
+
+# 5. Build Tree and Classify a New Sample
+decision_tree = id3(dataset, features, target_attribute)
+
+print("--- Decision Tree Structure ---")
+import json
+print(json.dumps(decision_tree, indent=4))
+
+# New Sample Classification
+new_sample = {'Outlook': 'Rain', 'Temperature': 'Cool', 'Humidity': 'High', 'Wind': 'Weak'}
+prediction = classify(decision_tree, new_sample)
+
+print("\n--- New Sample ---")
+print(new_sample)
+print(f"Predicted Class ('Play Tennis'): {prediction}")
