@@ -1,0 +1,18 @@
+from sklearn.linear_model import LinearRegression
+
+X = [
+    [1, 10000],
+    [2, 20000],
+    [3, 30000],
+    [4, 40000],
+    [5, 50000]
+]
+
+y = [900000, 800000, 700000, 600000, 500000]
+
+model = LinearRegression()
+model.fit(X, y)
+
+prediction = model.predict([[3, 30000]])
+
+print("Predicted Car Price:", round(prediction[0], 2))
