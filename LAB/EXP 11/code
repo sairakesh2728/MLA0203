@@ -1,0 +1,19 @@
+from sklearn.tree import DecisionTreeClassifier
+
+X = [
+    [25000, 20000],
+    [30000, 15000],
+    [50000, 10000],
+    [60000, 5000],
+    [20000, 25000],
+    [40000, 12000]
+]
+
+y = ["Poor", "Average", "Good", "Good", "Poor", "Average"]
+
+model = DecisionTreeClassifier(random_state=1)
+model.fit(X, y)
+
+prediction = model.predict([[55000, 7000]])
+
+print("Predicted Credit Score:", prediction[0])
